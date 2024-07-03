@@ -3,15 +3,19 @@ import { Contact } from "../models/contactsModel.js";
 import { contactValidation, favoriteValidation } from "../validations/validation.js";
 import { httpError } from "../helpers/httpError.js";
 
-const getAllContacts = async (_req, res) => {
-  // REFERENCE: https://mongoosejs.com/docs/api/model.html#Model.find()
-  const result = await Contact.find();
+const getAllContacts = async (req, res) => {
+  const { page = 1, limit = 20, favorite } = req.query;
+  const query = favorite ? { favorite: true } : {};
+
+  const result = await Contact.find(query)
+    .skip((page - 1) * limit)
+    .limit(parseInt(limit));
+
   res.json(result);
 };
 
 const getContactById = async (req, res) => {
   const { contactId } = req.params;
-  // REFERENCE: https://mongoosejs.com/docs/api/model.html#Model.findById()
   const result = await Contact.findById(contactId);
 
   if (!result) {
@@ -26,10 +30,9 @@ const addContact = async (req, res) => {
   const { error } = contactValidation.validate(req.body);
 
   if (error) {
-    throw httpError(400, "missing required field");
+    throw httpError(400, "missing required fields");
   }
 
-  // REFERENCE: https://mongoosejs.com/docs/api/model.html#Model.create()
   const result = await Contact.create(req.body);
 
   res.status(201).json(result);
@@ -37,7 +40,6 @@ const addContact = async (req, res) => {
 
 const deleteContactById = async (req, res) => {
   const { contactId } = req.params;
-
   const result = await Contact.findByIdAndDelete(contactId);
 
   if (!result) {
@@ -50,13 +52,13 @@ const deleteContactById = async (req, res) => {
 };
 
 const updateContactById = async (req, res) => {
+  // Preventing lack of necessary data for contacts (check validations folder)
   const { error } = contactValidation.validate(req.body);
   if (error) {
     throw httpError(400, "missing fields");
   }
 
   const { contactId } = req.params;
-
   const result = await Contact.findByIdAndUpdate(contactId, req.body, {
     new: true,
   });
@@ -67,15 +69,14 @@ const updateContactById = async (req, res) => {
 
   res.json(result);
 };
-
 const updateStatusContact = async (req, res) => {
+  // Preventing lack of necessary data for favorite (check validations folder)
   const { error } = favoriteValidation.validate(req.body);
   if (error) {
     throw httpError(400, "missing field favorite");
   }
 
   const { contactId } = req.params;
-
   const result = await Contact.findByIdAndUpdate(contactId, req.body, {
     new: true,
   });
@@ -86,6 +87,5 @@ const updateStatusContact = async (req, res) => {
 
   res.json(result);
 };
-
 // prettier-ignore
 export { getAllContacts, getContactById, addContact, deleteContactById, updateContactById, updateStatusContact};
